@@ -1,0 +1,7 @@
+*.pyc
+*.swp
+*.pkl
+*.pth
+result/*
+weights/*
+data/*

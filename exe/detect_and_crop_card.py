@@ -11,51 +11,54 @@ def extract_card(img_path, result_path='result/stage1_extract_card', new_height=
     :param new_height: (optional, default new_height=500.0) expected new height of the resized image
     :return: output image path of extracted card from the raw input
     """
-    image = cv2.imread(img_path)
-    image_name = os.path.basename(img_path)
+    try:
+        image = cv2.imread(img_path)
+        image_name = os.path.basename(img_path)
 
-    if not os.path.isdir(result_path):
-        os.makedirs(result_path)
+        if not os.path.isdir(result_path):
+            os.makedirs(result_path)
 
-    # rescale the image
-    orig_height = image.shape[0]
-    orig_width = image.shape[1]
-    orig_image = image.copy()
+        # rescale the image
+        orig_height = image.shape[0]
+        orig_width = image.shape[1]
+        orig_image = image.copy()
 
-    ratio = orig_height / new_height
-    new_width = orig_width / ratio
+        ratio = orig_height / new_height
+        new_width = orig_width / ratio
 
-    rescaled_image = cv2.resize(image, (int(new_width), int(new_height)), interpolation=cv2.INTER_AREA)
+        rescaled_image = cv2.resize(image, (int(new_width), int(new_height)), interpolation=cv2.INTER_AREA)
 
-    # pre-process the image
-    constants = image_processing.get_constants(height=new_height, width=new_width)
+        # pre-process the image
+        constants = image_processing.get_constants(height=new_height, width=new_width)
 
-    gray_image = image_processing.to_gray(rescaled_image)
+        gray_image = image_processing.to_gray(rescaled_image)
 
-    dilated_image = image_processing.to_dilated(gray_image, constants.get('MORPH'))
+        dilated_image = image_processing.to_dilated(gray_image, constants.get('MORPH'))
 
-    edged_image = image_processing.to_edged(dilated_image, constants.get('CANNY'))
+        edged_image = image_processing.to_edged(dilated_image, constants.get('CANNY'))
 
-    # find 4 most potential corners of the ID card in the RESCALED image (from algorithm)
-    (most_potential_4_corners, is_accept) = corners_algorithm.get_corners(edged_image)
+        # find 4 most potential corners of the ID card in the RESCALED image (from algorithm)
+        (most_potential_4_corners, is_accept) = corners_algorithm.get_corners(edged_image)
 
-    # is_accept = True -> an ID card is detected and cropped, False -> pass and come to the next image
-    if not is_accept:
-        print('Cannot detect a card from {}'.format(img_path))
+        # is_accept = True -> an ID card is detected and cropped, False -> pass and come to the next image
+        if not is_accept:
+            print('Cannot detect a card from {}'.format(img_path))
+            return None
+
+        # 4 most potential corners of the ID card in the ORIGINAL image
+        corners_orig = most_potential_4_corners * ratio
+        # sort points in clockwise order from the top-left
+        corners_orig = corners_algorithm.sort_points(corners_orig)
+
+        result = image_processing.to_bird_eye_view(orig_image, corners_orig)
+
+        output_path = os.path.join(result_path, image_name)
+
+        cv2.imwrite(output_path, cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+
+        return output_path
+    except Exception:
         return None
-
-    # 4 most potential corners of the ID card in the ORIGINAL image
-    corners_orig = most_potential_4_corners * ratio
-    # sort points in clockwise order from the top-left
-    corners_orig = corners_algorithm.sort_points(corners_orig)
-
-    result = image_processing.to_bird_eye_view(orig_image, corners_orig)
-
-    output_path = os.path.join(result_path, image_name)
-
-    cv2.imwrite(output_path, cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
-
-    return output_path
 
 
 # path_input_data = {

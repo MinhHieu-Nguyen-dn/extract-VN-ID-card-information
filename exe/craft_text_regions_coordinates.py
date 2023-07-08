@@ -38,82 +38,94 @@ def get_text_regions_coordinates(image_path, result_path='result/stage2_craft_te
     :param result_path: path to result folder of this function.
     :return: A string contains all bounding box coordinates for text regions in the extracted-card.
     """
+    try:
+        image_name = os.path.basename(image_path)
 
-    image_name = os.path.basename(image_path)
+        if not os.path.isdir(result_path):
+            os.makedirs(result_path)
 
-    if not os.path.isdir(result_path):
-        os.makedirs(result_path)
+        # get constants
+        (text_threshold, low_text, link_threshold,
+         cuda, canvas_size, mag_ratio, poly,
+         show_time, refine, trained_model, pretrained_weight_url, refiner_model, refiner_weight_url) = craft_constants()
 
-    # get constants
-    (text_threshold, low_text, link_threshold,
-     cuda, canvas_size, mag_ratio, poly,
-     show_time, refine, trained_model, pretrained_weight_url, refiner_model, refiner_weight_url) = craft_constants()
+        # load net and initialize
+        net = CRAFT()
 
-    # load net and initialize
-    net = CRAFT()
+        weights_path = 'weights/craft'
 
-    # download pre-trained weight file
-    print('downloading pre-trained weight file')
-    weights_path = 'weights/craft'
+        if not os.path.isdir(weights_path):
+            os.makedirs(weights_path)
 
-    if not os.path.isdir(weights_path):
-        os.makedirs(weights_path)
+        # Load pre-trained weight file
+        pretrained_model_path = os.path.join(weights_path, trained_model)
+        if not os.path.exists(pretrained_model_path):
+            print('Downloading pre-trained weight file...')
+            urllib.request.urlretrieve(pretrained_weight_url, pretrained_model_path)
+        else:
+            print('Pre-trained model existed at {}'.format(pretrained_model_path))
 
-    pretrained_model_path = os.path.join(weights_path, trained_model)
-    urllib.request.urlretrieve(pretrained_weight_url, pretrained_model_path)
-
-    print('Loading weights from checkpoint (' + trained_model + ')')
-    # if cuda:
-    #     net.load_state_dict(test.copyStateDict(torch.load(os.path.join(weights_path, trained_model))))
-    #     net = net.cuda()
-    #     net = torch.nn.DataParallel(net)
-    #     cudnn.benchmark = False
-    # else:
-    #     net.load_state_dict(test.copyStateDict(torch.load(trained_model, map_location='cpu')))
-
-    net.load_state_dict(test.copyStateDict(torch.load(pretrained_model_path, map_location='cpu')))
-
-    net.eval()
-
-    # download refiner model weight file
-    print('downloading refiner model file')
-    refiner_model_path = os.path.join(weights_path, refiner_model)
-    urllib.request.urlretrieve(refiner_weight_url, refiner_model_path)
-
-    # Link Refiner
-    refine_net = None
-    if refine:
-        refine_net = RefineNet()
-        print('Loading weights of refiner from checkpoint (' + refiner_model + ')')
+        print('Loading weights from checkpoint (' + trained_model + ')')
         # if cuda:
-        #     refine_net.load_state_dict(test.copyStateDict(torch.load(refiner_model)))
-        #     refine_net = refine_net.cuda()
-        #     refine_net = torch.nn.DataParallel(refine_net)
+        #     net.load_state_dict(test.copyStateDict(torch.load(pretrained_model_path)))
+        #     net = net.cuda()
+        #     net = torch.nn.DataParallel(net)
+        #     cudnn.benchmark = False
         # else:
-        #     refine_net.load_state_dict(test.copyStateDict(torch.load(refiner_model, map_location='cpu')))
+        #     net.load_state_dict(test.copyStateDict(torch.load(pretrained_model_path, map_location='cpu')))
 
-        refine_net.load_state_dict(test.copyStateDict(torch.load(refiner_model_path, map_location='cpu')))
+        net.load_state_dict(test.copyStateDict(torch.load(pretrained_model_path, map_location='cpu')))
 
-        refine_net.eval()
-        poly = True
+        net.eval()
 
-    t = time.time()
+        # Load refiner model weight file
 
-    image = imgproc.loadImage(image_path)
+        refiner_model_path = os.path.join(weights_path, refiner_model)
+        if not os.path.exists(refiner_model_path):
+            print('Downloading refiner model file...')
+            urllib.request.urlretrieve(refiner_weight_url, refiner_model_path)
+        else:
+            print('Refiner model existed at {}'.format(refiner_model_path))
 
-    bboxes, polys, score_text, det_scores = test.test_net(net, image, text_threshold, link_threshold, low_text, cuda,
-                                                          poly, canvas_size, mag_ratio, show_time, refine_net)
-    bbox_score = {}
+        # Link Refiner
+        refine_net = None
+        if refine:
+            refine_net = RefineNet()
+            print('Loading weights of refiner from checkpoint (' + refiner_model + ')')
+            # if cuda:
+            #     refine_net.load_state_dict(test.copyStateDict(torch.load(refiner_model_path)))
+            #     refine_net = refine_net.cuda()
+            #     refine_net = torch.nn.DataParallel(refine_net)
+            # else:
+            #     refine_net.load_state_dict(test.copyStateDict(torch.load(refiner_model_path, map_location='cpu')))
 
-    for box_num in range(len(bboxes)):
-        key = str(det_scores[box_num])
-        item = bboxes[box_num]
-        bbox_score[key] = item
+            refine_net.load_state_dict(test.copyStateDict(torch.load(refiner_model_path, map_location='cpu')))
 
-    output_masked_path = os.path.join(result_path, os.path.splitext(image_name)[0] + '_masked.jpg')
-    cv2.imwrite(output_masked_path, score_text)
-    file_utils.saveResult(image_path, image[:, :, ::-1], polys, dirname=result_path)
+            refine_net.eval()
+            poly = True
 
-    print("elapsed time : {}s".format(time.time() - t))
+        t = time.time()
 
-    return str(bbox_score)
+        image = imgproc.loadImage(image_path)
+
+        bboxes, polys, score_text, det_scores = test.test_net(net, image, text_threshold, link_threshold, low_text,
+                                                              cuda,
+                                                              poly, canvas_size, mag_ratio, show_time, refine_net)
+        bbox_score = {}
+
+        for box_num in range(len(bboxes)):
+            key = str(det_scores[box_num])
+            item = bboxes[box_num]
+            bbox_score[key] = item
+
+        output_masked_path = os.path.join(result_path, os.path.splitext(image_name)[0] + '_masked.jpg')
+        cv2.imwrite(output_masked_path, score_text)
+        file_utils.saveResult(image_path, image[:, :, ::-1], polys, dirname=result_path)
+
+        print("elapsed time : {}s".format(time.time() - t))
+
+        return str(bbox_score)
+    except Exception as e:
+        print('Cannot detect text regions(s) from {}'.format(image_path))
+        print(e)
+        return None

@@ -1,4 +1,5 @@
 import argparse
+import os
 
 from exe.detect_and_crop_card import extract_card
 from exe.craft_text_regions_coordinates import get_text_regions_coordinates
@@ -11,6 +12,13 @@ parser.add_argument("--input", default=None, help="Path to a single raw input im
 args = parser.parse_args()
 
 input_path = args.input
+
+# remove "_" from image's name
+image_name = os.path.basename(input_path)
+image_name = image_name.replace('_', '-')
+new_input_path = os.path.join(os.path.dirname(input_path), image_name)
+os.rename(input_path, new_input_path)
+input_path = new_input_path
 
 extracted_card_path = extract_card(input_path)
 if not extracted_card_path:

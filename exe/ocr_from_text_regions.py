@@ -4,7 +4,7 @@ from models.vietocr.utils import init_config, pred_text
 from modules.process_output.ocr_processing import sort_ocr_result
 
 
-def vietocr_all(text_regions_path, img_name_no_ext, result_path='result/stage4_ocr_in_csv'):
+def vietocr_all(text_regions_path, img_name_no_ext, result_path='result/ocr_in_csv'):
     """
     Use VietOCR to read text from text-region image.
     :param text_regions_path: Path to folder contains cropped text-region images.
@@ -46,3 +46,48 @@ def vietocr_all(text_regions_path, img_name_no_ext, result_path='result/stage4_o
     except Exception:
         print('Cannot apply VietOCR model for image from {}'.format(text_regions_path))
         return None, None, None
+
+
+def check_valid_predicted(straighten: str):
+    """
+    Check if the predicted string is of a valid ID card or not.
+    :param straighten: Straighten string by VietOCR.
+    :return: True (Valid) or False (Invalid)
+    """
+
+    def remove_accents(input_str):
+        """
+        Remove accents from the input string of tone language (Vietnamese).
+        :param input_str: Original string.
+        :return: Accents-removed string.
+        """
+        s1 = u'ÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯưẠạẢảẤấẦầẨẩẪẫẬậẮắẰằẲẳẴẵẶặẸẹẺẻẼẽẾếỀềỂểỄễỆệỈỉỊịỌọỎỏỐốỒồỔổỖỗỘộỚớỜờỞởỠỡỢợỤụỦủỨứỪừỬửỮữỰựỲỳỴỵỶỷỸỹ'
+        s0 = u'AAAAEEEIIOOOOUUYaaaaeeeiioooouuyAaDdIiUuOoUuAaAaAaAaAaAaAaAaAaAaAaAaEeEeEeEeEeEeEeEeIiIiOoOoOoOoOoOoOoOoOoOoOoOoUuUuUuUuUuUuUuYyYyYyYy'
+        try:
+            s = ''
+            for c in input_str:
+                if c in s1:
+                    s += s0[s1.index(c)]
+                else:
+                    s += c
+            return s
+        except Exception as e:
+            print(e)
+            return ' '
+
+    straighten_noaccents = remove_accents(straighten).lower()
+
+    result = "chung minh nhan dan" in straighten_noaccents \
+             or "can cuoc cong dan" in straighten_noaccents \
+             or "can cuoc cong" in straighten_noaccents \
+             or "can cuoc" in straighten_noaccents \
+             or "cancuocongidan" in straighten_noaccents \
+             or "identity card" in straighten_noaccents \
+             or "canguociconidan" in straighten_noaccents \
+             or "canicuocicongidan" in straighten_noaccents \
+             or "cong dan" in straighten_noaccents \
+             or "chung minh nhan" in straighten_noaccents \
+             or "chung minh" in straighten_noaccents \
+             or "citizen" in straighten_noaccents
+
+    return result

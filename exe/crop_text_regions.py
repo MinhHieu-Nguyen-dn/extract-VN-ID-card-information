@@ -23,7 +23,7 @@ def crop(pts, image):
     return dst2
 
 
-def generate_words(extracted_img_path, score_bbox, result_path='result/stage3_cropped_text_regions'):
+def generate_words(extracted_img_path, score_bbox, result_path='result/cropped_text_regions'):
     """
     :param extracted_img_path: path to the extracted-card image.
     :param score_bbox: a string of text-region coordinates from CRAFT model execution.

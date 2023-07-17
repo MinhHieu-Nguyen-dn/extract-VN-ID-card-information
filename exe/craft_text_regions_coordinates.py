@@ -32,7 +32,7 @@ def craft_constants():
             show_time, refine, trained_model, pretrained_weight_url, refiner_model, refiner_weight_url)
 
 
-def get_text_regions_coordinates(image_path, result_path='result/stage2_craft_text_regions'):
+def get_text_regions_coordinates(image_path, result_path='result/craft_text_regions'):
     """
     :param image_path: path to extracted-card image.
     :param result_path: path to result folder of this function.
@@ -108,8 +108,7 @@ def get_text_regions_coordinates(image_path, result_path='result/stage2_craft_te
 
         image = imgproc.loadImage(image_path)
 
-        bboxes, polys, score_text, det_scores = test.test_net(net, image, text_threshold, link_threshold, low_text,
-                                                              cuda,
+        bboxes, polys, score_text, det_scores = test.test_net(net, image, text_threshold, link_threshold, low_text, cuda,
                                                               poly, canvas_size, mag_ratio, show_time, refine_net)
         bbox_score = {}
 

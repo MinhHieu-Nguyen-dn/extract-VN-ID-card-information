@@ -2,6 +2,7 @@
 *.swp
 *.pkl
 *.pth
-result
 weights
 data
+result
+.idea
